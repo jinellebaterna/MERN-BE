@@ -1,3 +1,4 @@
+const fs = require("fs");
 const { validationResult } = require("express-validator");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -138,6 +139,69 @@ const login = async (req, res, next) => {
   });
 };
 
+const getUserById = async (req, res, next) => {
+  const userId = req.params.uid;
+
+  let user;
+  try {
+    user = await User.findById(userId, "-password");
+  } catch (err) {
+    return next(new HttpError("Fetching user failed, please try again.", 500));
+  }
+
+  if (!user) {
+    return next(
+      new HttpError("Could not find a user for the provided id.", 404),
+    );
+  }
+
+  res.json({ user: user.toObject({ getters: true }) });
+};
+
+const updateUser = async (req, res, next) => {
+  const userId = req.params.uid;
+
+  if (req.userData.userId !== userId) {
+    return next(new HttpError("You are not allowed to edit this user.", 401));
+  }
+
+  let user;
+  try {
+    user = await User.findById(userId);
+  } catch (err) {
+    return next(new HttpError("Updating user failed, please try again.", 500));
+  }
+
+  if (!user) {
+    return next(
+      new HttpError("Could not find user for the provided id.", 404),
+    );
+  }
+
+  const oldImagePath = user.image;
+
+  user.name = req.body.name;
+  if (req.file) {
+    user.image = req.file.path;
+  }
+
+  try {
+    await user.save();
+  } catch (err) {
+    return next(new HttpError("Updating user failed, please try again.", 500));
+  }
+
+  if (req.file && oldImagePath) {
+    fs.unlink(oldImagePath, (err) => {
+      console.log(err);
+    });
+  }
+
+  res.status(200).json({ user: user.toObject({ getters: true }) });
+};
+
 exports.getUsers = getUsers;
+exports.getUserById = getUserById;
+exports.updateUser = updateUser;
 exports.signup = signup;
 exports.login = login;
