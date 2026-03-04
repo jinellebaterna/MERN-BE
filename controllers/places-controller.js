@@ -184,7 +184,10 @@ const deletePlace = async (req, res, next) => {
 };
 
 const searchPlaces = async (req, res, next) => {
-  const { search, creator } = req.query;
+  const { search, creator, page = 1, limit = 9 } = req.query;
+  const pageNum = parseInt(page);
+  const limitNum = parseInt(limit);
+  const skip = (pageNum - 1) * limitNum;
 
   const filter = {};
 
@@ -199,16 +202,80 @@ const searchPlaces = async (req, res, next) => {
     filter.creator = creator;
   }
 
-  let places;
+  let places, totalCount;
   try {
-    places = await Place.find(filter);
+    [places, totalCount] = await Promise.all([
+      Place.find(filter).skip(skip).limit(limitNum),
+      Place.countDocuments(filter),
+    ]);
   } catch (err) {
     return next(new HttpError("Searching failed, please try again.", 500));
   }
 
   res.json({
     places: places.map((p) => p.toObject({ getters: true })),
+    totalCount,
+    currentPage: pageNum,
+    totalPages: Math.ceil(totalCount / limitNum),
   });
+};
+
+const likePlace = async (req, res, next) => {
+  const placeId = req.params.pid;
+  const userId = req.userData.userId;
+
+  let place;
+  try {
+    place = await Place.findById(placeId);
+  } catch (err) {
+    return next(new HttpError("Something went wrong, please try again.", 500));
+  }
+
+  if (!place) {
+    return next(new HttpError("Could not find place for this id.", 404));
+  }
+
+  if (place.likes.includes(userId)) {
+    return next(new HttpError("You already liked this place.", 422));
+  }
+
+  place.likes.push(userId);
+  try {
+    await place.save();
+  } catch (err) {
+    return next(new HttpError("Liking place failed, please try again.", 500));
+  }
+
+  res.json({ likes: place.likes });
+};
+
+const unlikePlace = async (req, res, next) => {
+  const placeId = req.params.pid;
+  const userId = req.userData.userId;
+
+  let place;
+  try {
+    place = await Place.findById(placeId);
+  } catch (err) {
+    return next(new HttpError("Something went wrong, please try again.", 500));
+  }
+
+  if (!place) {
+    return next(new HttpError("Could not find place for this id.", 404));
+  }
+
+  if (!place.likes.includes(userId)) {
+    return next(new HttpError("You have not liked this place.", 422));
+  }
+
+  place.likes.pull(userId);
+  try {
+    await place.save();
+  } catch (err) {
+    return next(new HttpError("Unliking place failed, please try again.", 500));
+  }
+
+  res.json({ likes: place.likes });
 };
 
 exports.getPlaceById = getPlaceById;
@@ -217,3 +284,5 @@ exports.createPlace = createPlace;
 exports.updatePlace = updatePlace;
 exports.deletePlace = deletePlace;
 exports.searchPlaces = searchPlaces;
+exports.likePlace = likePlace;
+exports.unlikePlace = unlikePlace;

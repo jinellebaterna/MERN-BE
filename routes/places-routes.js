@@ -29,5 +29,7 @@ router.patch(
   placesControllers.updatePlace,
 );
 router.delete("/:pid", placesControllers.deletePlace);
+router.post("/:pid/like", placesControllers.likePlace);
+router.delete("/:pid/like", placesControllers.unlikePlace);
 
 module.exports = router;
