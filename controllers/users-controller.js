@@ -4,6 +4,8 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const User = require("../models/user");
+const Place = require("../models/place");
+const Comment = require("../models/comment");
 
 const HttpError = require("../models/http-error");
 
@@ -200,8 +202,141 @@ const updateUser = async (req, res, next) => {
   res.status(200).json({ user: user.toObject({ getters: true }) });
 };
 
+const getLikedPlaces = async (req, res, next) => {
+  const userId = req.params.uid;
+
+  let places;
+  try {
+    places = await Place.find({ likes: userId });
+  } catch (err) {
+    return next(
+      new HttpError("Fetching liked places failed, please try again.", 500),
+    );
+  }
+
+  res.json({
+    places: places.map((p) => p.toObject({ getters: true })),
+  });
+};
+
+const changePassword = async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return next(new HttpError("Invalid inputs", 422));
+  }
+
+  const userId = req.params.uid;
+
+  if (req.userData.userId !== userId) {
+    return next(
+      new HttpError("You are not allowed to change this user's password.", 401),
+    );
+  }
+
+  const { currentPassword, newPassword } = req.body;
+
+  let user;
+  try {
+    user = await User.findById(userId);
+  } catch (err) {
+    return next(
+      new HttpError("Changing password failed, please try again.", 500),
+    );
+  }
+
+  if (!user) {
+    return next(new HttpError("Could not find user for the provided id.", 404));
+  }
+
+  let isValidPassword;
+  try {
+    isValidPassword = await bcrypt.compare(currentPassword, user.password);
+  } catch (err) {
+    return next(
+      new HttpError("Changing password failed, please try again.", 500),
+    );
+  }
+
+  if (!isValidPassword) {
+    return next(new HttpError("Current password is incorrect.", 403));
+  }
+
+  let hashedPassword;
+  try {
+    hashedPassword = await bcrypt.hash(newPassword, 12);
+  } catch (err) {
+    return next(
+      new HttpError("Changing password failed, please try again.", 500),
+    );
+  }
+
+  user.password = hashedPassword;
+  try {
+    await user.save();
+  } catch (err) {
+    return next(
+      new HttpError("Changing password failed, please try again.", 500),
+    );
+  }
+
+  res.status(200).json({ message: "Password updated successfully." });
+};
+
+const deleteUser = async (req, res, next) => {
+  const userId = req.params.uid;
+
+  if (req.userData.userId !== userId) {
+    return next(
+      new HttpError("You are not allowed to delete this account.", 401),
+    );
+  }
+
+  let user;
+  try {
+    user = await User.findById(userId).populate("places");
+  } catch (err) {
+    return next(
+      new HttpError("Deleting account failed, please try again.", 500),
+    );
+  }
+
+  if (!user) {
+    return next(new HttpError("Could not find user for the provided id.", 404));
+  }
+
+  const imagePaths = user.places.map((p) => p.image);
+  const placeIds = user.places.map((p) => p._id);
+
+  try {
+    await Comment.deleteMany({ place: { $in: placeIds } });
+    await Place.deleteMany({ creator: userId });
+    await user.deleteOne();
+  } catch (err) {
+    return next(
+      new HttpError("Deleting account failed, please try again.", 500),
+    );
+  }
+
+  imagePaths.forEach((imgPath) => {
+    fs.unlink(imgPath, (err) => {
+      console.log(err);
+    });
+  });
+
+  if (user.image) {
+    fs.unlink(user.image, (err) => {
+      console.log(err);
+    });
+  }
+
+  res.status(200).json({ message: "Account deleted." });
+};
+
 exports.getUsers = getUsers;
 exports.getUserById = getUserById;
 exports.updateUser = updateUser;
 exports.signup = signup;
 exports.login = login;
+exports.getLikedPlaces = getLikedPlaces;
+exports.changePassword = changePassword;
+exports.deleteUser = deleteUser;

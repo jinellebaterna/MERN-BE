@@ -3,6 +3,7 @@ const { validationResult } = require("express-validator");
 const HttpError = require("../models/http-error");
 const Place = require("../models/place");
 const User = require("../models/user");
+const Comment = require("../models/comment");
 
 const getPlaceById = async (req, res, next) => {
   const placeId = req.params.pid;
@@ -54,7 +55,7 @@ const createPlace = async (req, res, next) => {
     throw new HttpError("Invalid inputs", 422);
   }
 
-  const { title, description, address, creator } = req.body;
+  const { title, description, address, creator, tags } = req.body;
 
   const createdPlace = new Place({
     title,
@@ -62,6 +63,7 @@ const createPlace = async (req, res, next) => {
     image: req.file.path,
     address,
     creator,
+    tags: tags ? (Array.isArray(tags) ? tags : [tags]) : [],
   });
 
   let user;
@@ -101,7 +103,7 @@ const updatePlace = async (req, res, next) => {
     return next(new HttpError("Invalid inputs", 422));
   }
 
-  const { title, description } = req.body;
+  const { title, description, tags } = req.body;
   const placeId = req.params.pid;
 
   let place;
@@ -122,6 +124,9 @@ const updatePlace = async (req, res, next) => {
 
   place.title = title;
   place.description = description;
+  if (tags !== undefined) {
+    place.tags = Array.isArray(tags) ? tags : [tags];
+  }
 
   try {
     await place.save();
@@ -165,6 +170,7 @@ const deletePlace = async (req, res, next) => {
   const imagePath = place.image;
 
   try {
+    await Comment.deleteMany({ place: placeId });
     await place.deleteOne();
     place.creator.places.pull(place);
     await place.creator.save();
@@ -184,7 +190,7 @@ const deletePlace = async (req, res, next) => {
 };
 
 const searchPlaces = async (req, res, next) => {
-  const { search, creator, page = 1, limit = 9 } = req.query;
+  const { search, creator, tag, page = 1, limit = 9 } = req.query;
   const pageNum = parseInt(page);
   const limitNum = parseInt(limit);
   const skip = (pageNum - 1) * limitNum;
@@ -200,6 +206,10 @@ const searchPlaces = async (req, res, next) => {
 
   if (creator) {
     filter.creator = creator;
+  }
+
+  if (tag) {
+    filter.tags = tag;
   }
 
   let places, totalCount;
@@ -278,6 +288,120 @@ const unlikePlace = async (req, res, next) => {
   res.json({ likes: place.likes });
 };
 
+const getPopularPlaces = async (req, res, next) => {
+  const limitNum = parseInt(req.query.limit) || 6;
+
+  let places;
+  try {
+    places = await Place.aggregate([
+      { $addFields: { likesCount: { $size: "$likes" } } },
+      { $sort: { likesCount: -1 } },
+      { $limit: limitNum },
+    ]);
+  } catch (err) {
+    return next(
+      new HttpError("Fetching popular places failed, please try again.", 500),
+    );
+  }
+
+  res.json({
+    places: places.map((p) => ({ ...p, id: p._id.toString() })),
+  });
+};
+
+const addComment = async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return next(new HttpError("Invalid inputs", 422));
+  }
+
+  const placeId = req.params.pid;
+  const { text } = req.body;
+
+  let place;
+  try {
+    place = await Place.findById(placeId);
+  } catch (err) {
+    return next(new HttpError("Something went wrong, please try again.", 500));
+  }
+
+  if (!place) {
+    return next(new HttpError("Could not find place for this id.", 404));
+  }
+
+  const comment = new Comment({
+    text,
+    author: req.userData.userId,
+    place: placeId,
+  });
+
+  try {
+    await comment.save();
+  } catch (err) {
+    return next(
+      new HttpError("Adding comment failed, please try again.", 500),
+    );
+  }
+
+  await comment.populate("author", "name image");
+
+  res.status(201).json({ comment: { ...comment.toObject({ getters: true }) } });
+};
+
+const getComments = async (req, res, next) => {
+  const placeId = req.params.pid;
+
+  let comments;
+  try {
+    comments = await Comment.find({ place: placeId })
+      .populate("author", "name image")
+      .sort({ createdAt: -1 });
+  } catch (err) {
+    return next(
+      new HttpError("Fetching comments failed, please try again.", 500),
+    );
+  }
+
+  res.json({
+    comments: comments.map((c) => c.toObject({ getters: true })),
+  });
+};
+
+const deleteComment = async (req, res, next) => {
+  const { pid, cid } = req.params;
+
+  let comment;
+  try {
+    comment = await Comment.findById(cid);
+  } catch (err) {
+    return next(new HttpError("Something went wrong, please try again.", 500));
+  }
+
+  if (!comment) {
+    return next(new HttpError("Could not find comment for this id.", 404));
+  }
+
+  if (comment.place.toString() !== pid) {
+    return next(new HttpError("Comment does not belong to this place.", 422));
+  }
+
+  if (comment.author.toString() !== req.userData.userId) {
+    return next(
+      new HttpError("You are not allowed to delete this comment.", 401),
+    );
+  }
+
+  try {
+    await comment.deleteOne();
+  } catch (err) {
+    return next(
+      new HttpError("Deleting comment failed, please try again.", 500),
+    );
+  }
+
+  res.status(200).json({ message: "Comment deleted." });
+};
+
 exports.getPlaceById = getPlaceById;
 exports.getPlacesByUserId = getPlacesByUserId;
 exports.createPlace = createPlace;
@@ -286,3 +410,7 @@ exports.deletePlace = deletePlace;
 exports.searchPlaces = searchPlaces;
 exports.likePlace = likePlace;
 exports.unlikePlace = unlikePlace;
+exports.getPopularPlaces = getPopularPlaces;
+exports.addComment = addComment;
+exports.getComments = getComments;
+exports.deleteComment = deleteComment;
