@@ -16,7 +16,7 @@ router.use(checkAuth);
 
 router.post(
   "/",
-  fileUpload.single("image"),
+  fileUpload.array("images", 5),
   [
     check("title").not().isEmpty(),
     check("description").isLength({ min: 5 }),
@@ -27,6 +27,7 @@ router.post(
 
 router.patch(
   "/:pid",
+  fileUpload.array("images", 5),
   [check("title").not().isEmpty(), check("description").isLength({ min: 5 })],
   placesControllers.updatePlace,
 );

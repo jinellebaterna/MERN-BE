@@ -55,12 +55,16 @@ const createPlace = async (req, res, next) => {
     throw new HttpError("Invalid inputs", 422);
   }
 
+  if (!req.files || req.files.length === 0) {
+    return next(new HttpError("At least one image is required.", 422));
+  }
+
   const { title, description, address, creator, tags } = req.body;
 
   const createdPlace = new Place({
     title,
     description,
-    image: req.file.path,
+    images: req.files.map((f) => f.path),
     address,
     creator,
     tags: tags ? (Array.isArray(tags) ? tags : [tags]) : [],
@@ -127,6 +131,15 @@ const updatePlace = async (req, res, next) => {
   if (tags !== undefined) {
     place.tags = Array.isArray(tags) ? tags : [tags];
   }
+  if (req.files?.length) {
+    place.images.push(...req.files.map((f) => f.path));
+  }
+  const { removeImages } = req.body;
+  if (removeImages) {
+    const toRemove = Array.isArray(removeImages) ? removeImages : [removeImages];
+    toRemove.forEach((imgPath) => fs.unlink(imgPath, (err) => console.log(err)));
+    place.images = place.images.filter((img) => !toRemove.includes(img));
+  }
 
   try {
     await place.save();
@@ -167,7 +180,7 @@ const deletePlace = async (req, res, next) => {
     return next(error);
   }
 
-  const imagePath = place.image;
+  const imagePaths = place.images;
 
   try {
     await Comment.deleteMany({ place: placeId });
@@ -182,8 +195,10 @@ const deletePlace = async (req, res, next) => {
     return next(error);
   }
 
-  fs.unlink(imagePath, (err) => {
-    console.log(err);
+  imagePaths.forEach((imgPath) => {
+    fs.unlink(imgPath, (err) => {
+      console.log(err);
+    });
   });
 
   res.status(200).json({ message: "Place Deleted!" });

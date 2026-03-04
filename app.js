@@ -40,6 +40,9 @@ app.use((error, req, res, next) => {
       console.log(err);
     });
   }
+  if (req.files) {
+    req.files.forEach((f) => fs.unlink(f.path, (err) => console.log(err)));
+  }
   if (res.headerSent) {
     return next(error);
   }
