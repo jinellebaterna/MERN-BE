@@ -55,7 +55,7 @@ const createPlace = async (req, res, next) => {
     throw new HttpError("Invalid inputs", 422);
   }
 
-  if (!req.files || req.files.length === 0) {
+  if (!req.body.images?.length) {
     return next(new HttpError("At least one image is required.", 422));
   }
 
@@ -64,7 +64,7 @@ const createPlace = async (req, res, next) => {
   const createdPlace = new Place({
     title,
     description,
-    images: req.files.map((f) => f.path),
+    images: Array.isArray(req.body.images) ? req.body.images : [req.body.images],
     address,
     creator,
     tags: tags ? (Array.isArray(tags) ? tags : [tags]) : [],
@@ -131,8 +131,8 @@ const updatePlace = async (req, res, next) => {
   if (tags !== undefined) {
     place.tags = Array.isArray(tags) ? tags : [tags];
   }
-  if (req.files?.length) {
-    place.images.push(...req.files.map((f) => f.path));
+  if (req.body.newImages?.length) {
+    place.images.push(...[].concat(req.body.newImages));
   }
   const { removeImages } = req.body;
   if (removeImages) {

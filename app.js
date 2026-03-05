@@ -7,6 +7,7 @@ const mongoose = require("mongoose");
 
 const placesRoutes = require("./routes/places-routes");
 const usersRoutes = require("./routes/users-routes");
+const uploadRoutes = require("./routes/upload-routes");
 
 const HttpError = require("./models/http-error");
 
@@ -26,6 +27,7 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use("/api/uploads", uploadRoutes);
 app.use("/api/places", placesRoutes);
 app.use("/api/users", usersRoutes);
 

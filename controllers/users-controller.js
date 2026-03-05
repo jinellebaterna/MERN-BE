@@ -57,7 +57,7 @@ const signup = async (req, res, next) => {
   const createdUser = new User({
     name,
     email,
-    image: req.file.path,
+    image: req.body.image,
     password: hashedPassword,
     places: [],
   });
@@ -183,8 +183,8 @@ const updateUser = async (req, res, next) => {
   const oldImagePath = user.image;
 
   user.name = req.body.name;
-  if (req.file) {
-    user.image = req.file.path;
+  if (req.body.image) {
+    user.image = req.body.image;
   }
 
   try {
@@ -193,7 +193,7 @@ const updateUser = async (req, res, next) => {
     return next(new HttpError("Updating user failed, please try again.", 500));
   }
 
-  if (req.file && oldImagePath) {
+  if (req.body.image && oldImagePath) {
     fs.unlink(oldImagePath, (err) => {
       console.log(err);
     });
