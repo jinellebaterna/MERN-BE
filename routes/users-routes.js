@@ -39,4 +39,21 @@ router.patch(
 
 router.delete("/:uid", checkAuth, usersControllers.deleteUser);
 
+router.get("/:uid/countries", usersControllers.getCountries);
+router.post("/:uid/countries", checkAuth, usersControllers.addCountry);
+router.delete("/:uid/countries/:code", checkAuth, usersControllers.removeCountry);
+router.patch("/:uid/countries/:code/images", checkAuth, usersControllers.updateCountryImages);
+router.patch("/:uid/countries/:code", checkAuth, usersControllers.updateCountry);
+
+router.get("/:uid/wishlist", usersControllers.getWishlist);
+router.post("/:uid/wishlist", checkAuth, usersControllers.addToWishlist);
+router.delete("/:uid/wishlist/:code", checkAuth, usersControllers.removeFromWishlist);
+
+router.post("/:uid/follow", checkAuth, usersControllers.followUser);
+router.delete("/:uid/follow", checkAuth, usersControllers.unfollowUser);
+
+router.post("/:uid/countries/:code/like", checkAuth, usersControllers.toggleLikeCountry);
+router.post("/:uid/countries/:code/comments", checkAuth, usersControllers.addCountryComment);
+router.delete("/:uid/countries/:code/comments/:commentId", checkAuth, usersControllers.deleteCountryComment);
+
 module.exports = router;

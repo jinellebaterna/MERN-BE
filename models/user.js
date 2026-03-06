@@ -2,12 +2,39 @@ const mongoose = require("mongoose");
 
 const Schema = mongoose.Schema;
 
+const commentSchema = new Schema({
+  user: { type: mongoose.Types.ObjectId, required: true, ref: "User" },
+  text: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+});
+
+const countrySchema = new Schema({
+  name: { type: String, required: true },
+  code: { type: String, required: true },
+  images: [String],
+  story: { type: String, default: "" },
+  cities: [String],
+  likes: [{ type: mongoose.Types.ObjectId, ref: "User" }],
+  comments: [commentSchema],
+  addedAt: { type: Date, default: Date.now },
+});
+
+const wishlistSchema = new Schema({
+  name: { type: String, required: true },
+  code: { type: String, required: true },
+  addedAt: { type: Date, default: Date.now },
+});
+
 const userSchema = new Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true, minLength: 6 },
   image: { type: String, required: true },
   places: [{ type: mongoose.Types.ObjectId, required: true, ref: "Place" }],
+  countries: [countrySchema],
+  wishlist: [wishlistSchema],
+  followers: [{ type: mongoose.Types.ObjectId, ref: "User" }],
+  following: [{ type: mongoose.Types.ObjectId, ref: "User" }],
 });
 
 module.exports = mongoose.model("User", userSchema);
