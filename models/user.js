@@ -17,12 +17,14 @@ const countrySchema = new Schema({
   likes: [{ type: mongoose.Types.ObjectId, ref: "User" }],
   comments: [commentSchema],
   addedAt: { type: Date, default: Date.now },
+  order: { type: Number, default: null },
 });
 
 const wishlistSchema = new Schema({
   name: { type: String, required: true },
   code: { type: String, required: true },
   addedAt: { type: Date, default: Date.now },
+  order: { type: Number, default: null },
 });
 
 const userSchema = new Schema({

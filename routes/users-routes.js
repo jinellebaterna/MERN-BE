@@ -41,12 +41,14 @@ router.delete("/:uid", checkAuth, usersControllers.deleteUser);
 
 router.get("/:uid/countries", usersControllers.getCountries);
 router.post("/:uid/countries", checkAuth, usersControllers.addCountry);
+router.patch("/:uid/countries/reorder", checkAuth, usersControllers.reorderCountries);
 router.delete("/:uid/countries/:code", checkAuth, usersControllers.removeCountry);
 router.patch("/:uid/countries/:code/images", checkAuth, usersControllers.updateCountryImages);
 router.patch("/:uid/countries/:code", checkAuth, usersControllers.updateCountry);
 
 router.get("/:uid/wishlist", usersControllers.getWishlist);
 router.post("/:uid/wishlist", checkAuth, usersControllers.addToWishlist);
+router.patch("/:uid/wishlist/reorder", checkAuth, usersControllers.reorderWishlist);
 router.delete("/:uid/wishlist/:code", checkAuth, usersControllers.removeFromWishlist);
 
 router.post("/:uid/follow", checkAuth, usersControllers.followUser);

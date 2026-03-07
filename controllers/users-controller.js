@@ -81,9 +81,13 @@ const signup = async (req, res, next) => {
     return next(error);
   }
 
-  res
-    .status(201)
-    .json({ userId: createdUser.id, email: createdUser.email, token: token });
+  res.status(201).json({
+    userId: createdUser.id,
+    email: createdUser.email,
+    token: token,
+    name: createdUser.name,
+    image: createdUser.image,
+  });
 };
 
 const login = async (req, res, next) => {
@@ -138,6 +142,8 @@ const login = async (req, res, next) => {
     userId: existingUser.id,
     email: existingUser.email,
     token: token,
+    name: existingUser.name,
+    image: existingUser.image,
   });
 };
 
@@ -175,9 +181,7 @@ const updateUser = async (req, res, next) => {
   }
 
   if (!user) {
-    return next(
-      new HttpError("Could not find user for the provided id.", 404),
-    );
+    return next(new HttpError("Could not find user for the provided id.", 404));
   }
 
   const oldImagePath = user.image;
@@ -346,15 +350,20 @@ const getCountries = async (req, res, next) => {
   try {
     user = await User.findById(userId, "countries");
   } catch (err) {
-    return next(new HttpError("Fetching countries failed, please try again.", 500));
+    return next(
+      new HttpError("Fetching countries failed, please try again.", 500),
+    );
   }
 
   if (!user) {
     return next(new HttpError("Could not find user for the provided id.", 404));
   }
 
-  const sorted = [...user.countries].sort(
-    (a, b) => new Date(b.addedAt) - new Date(a.addedAt),
+  const anyOrdered = user.countries.some(c => c.order !== null && c.order !== undefined);
+  const sorted = [...user.countries].sort((a, b) =>
+    anyOrdered
+      ? (a.order ?? 999999) - (b.order ?? 999999)
+      : new Date(b.addedAt) - new Date(a.addedAt)
   );
 
   res.json({ countries: sorted.map((c) => c.toObject({ getters: true })) });
@@ -364,7 +373,12 @@ const addCountry = async (req, res, next) => {
   const userId = req.params.uid;
 
   if (req.userData.userId !== userId) {
-    return next(new HttpError("You are not allowed to modify this user's countries.", 401));
+    return next(
+      new HttpError(
+        "You are not allowed to modify this user's countries.",
+        401,
+      ),
+    );
   }
 
   const { name, code } = req.body;
@@ -403,14 +417,21 @@ const removeCountry = async (req, res, next) => {
   const { uid: userId, code } = req.params;
 
   if (req.userData.userId !== userId) {
-    return next(new HttpError("You are not allowed to modify this user's countries.", 401));
+    return next(
+      new HttpError(
+        "You are not allowed to modify this user's countries.",
+        401,
+      ),
+    );
   }
 
   let user;
   try {
     user = await User.findById(userId);
   } catch (err) {
-    return next(new HttpError("Removing country failed, please try again.", 500));
+    return next(
+      new HttpError("Removing country failed, please try again.", 500),
+    );
   }
 
   if (!user) {
@@ -428,7 +449,9 @@ const removeCountry = async (req, res, next) => {
   try {
     await user.save();
   } catch (err) {
-    return next(new HttpError("Removing country failed, please try again.", 500));
+    return next(
+      new HttpError("Removing country failed, please try again.", 500),
+    );
   }
 
   imagePaths.forEach((imgPath) => {
@@ -444,7 +467,12 @@ const updateCountryImages = async (req, res, next) => {
   const { uid: userId, code } = req.params;
 
   if (req.userData.userId !== userId) {
-    return next(new HttpError("You are not allowed to modify this user's countries.", 401));
+    return next(
+      new HttpError(
+        "You are not allowed to modify this user's countries.",
+        401,
+      ),
+    );
   }
 
   const { addImages = [], removeImages = [] } = req.body;
@@ -453,7 +481,9 @@ const updateCountryImages = async (req, res, next) => {
   try {
     user = await User.findById(userId);
   } catch (err) {
-    return next(new HttpError("Updating images failed, please try again.", 500));
+    return next(
+      new HttpError("Updating images failed, please try again.", 500),
+    );
   }
 
   if (!user) {
@@ -473,7 +503,9 @@ const updateCountryImages = async (req, res, next) => {
   try {
     await user.save();
   } catch (err) {
-    return next(new HttpError("Updating images failed, please try again.", 500));
+    return next(
+      new HttpError("Updating images failed, please try again.", 500),
+    );
   }
 
   removeImages.forEach((imgPath) => {
@@ -489,7 +521,12 @@ const updateCountry = async (req, res, next) => {
   const { uid: userId, code } = req.params;
 
   if (req.userData.userId !== userId) {
-    return next(new HttpError("You are not allowed to modify this user's countries.", 401));
+    return next(
+      new HttpError(
+        "You are not allowed to modify this user's countries.",
+        401,
+      ),
+    );
   }
 
   const { story, cities } = req.body;
@@ -498,7 +535,9 @@ const updateCountry = async (req, res, next) => {
   try {
     user = await User.findById(userId);
   } catch (err) {
-    return next(new HttpError("Updating country failed, please try again.", 500));
+    return next(
+      new HttpError("Updating country failed, please try again.", 500),
+    );
   }
 
   if (!user) {
@@ -516,7 +555,9 @@ const updateCountry = async (req, res, next) => {
   try {
     await user.save();
   } catch (err) {
-    return next(new HttpError("Updating country failed, please try again.", 500));
+    return next(
+      new HttpError("Updating country failed, please try again.", 500),
+    );
   }
 
   res.status(200).json({ country: country.toObject({ getters: true }) });
@@ -528,10 +569,17 @@ const getWishlist = async (req, res, next) => {
   try {
     user = await User.findById(userId, "wishlist");
   } catch (err) {
-    return next(new HttpError("Fetching wishlist failed, please try again.", 500));
+    return next(
+      new HttpError("Fetching wishlist failed, please try again.", 500),
+    );
   }
   if (!user) return next(new HttpError("User not found.", 404));
-  const sorted = [...user.wishlist].sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt));
+  const anyOrdered = user.wishlist.some(c => c.order !== null && c.order !== undefined);
+  const sorted = [...user.wishlist].sort((a, b) =>
+    anyOrdered
+      ? (a.order ?? 999999) - (b.order ?? 999999)
+      : new Date(b.addedAt) - new Date(a.addedAt)
+  );
   res.json({ wishlist: sorted.map((c) => c.toObject({ getters: true })) });
 };
 
@@ -540,12 +588,15 @@ const addToWishlist = async (req, res, next) => {
   if (req.userData.userId !== userId)
     return next(new HttpError("Not authorized.", 401));
   const { name, code } = req.body;
-  if (!name || !code) return next(new HttpError("Name and code are required.", 422));
+  if (!name || !code)
+    return next(new HttpError("Name and code are required.", 422));
   let user;
   try {
     user = await User.findById(userId);
   } catch (err) {
-    return next(new HttpError("Adding to wishlist failed, please try again.", 500));
+    return next(
+      new HttpError("Adding to wishlist failed, please try again.", 500),
+    );
   }
   if (!user) return next(new HttpError("User not found.", 404));
   if (user.wishlist.some((c) => c.code === code))
@@ -554,7 +605,9 @@ const addToWishlist = async (req, res, next) => {
   try {
     await user.save();
   } catch (err) {
-    return next(new HttpError("Adding to wishlist failed, please try again.", 500));
+    return next(
+      new HttpError("Adding to wishlist failed, please try again.", 500),
+    );
   }
   const added = user.wishlist[user.wishlist.length - 1];
   res.status(201).json({ country: added.toObject({ getters: true }) });
@@ -568,18 +621,57 @@ const removeFromWishlist = async (req, res, next) => {
   try {
     user = await User.findById(userId);
   } catch (err) {
-    return next(new HttpError("Removing from wishlist failed, please try again.", 500));
+    return next(
+      new HttpError("Removing from wishlist failed, please try again.", 500),
+    );
   }
   if (!user) return next(new HttpError("User not found.", 404));
   const country = user.wishlist.find((c) => c.code === code);
-  if (!country) return next(new HttpError("Country not found in wishlist.", 404));
+  if (!country)
+    return next(new HttpError("Country not found in wishlist.", 404));
   user.wishlist.pull({ _id: country._id });
   try {
     await user.save();
   } catch (err) {
-    return next(new HttpError("Removing from wishlist failed, please try again.", 500));
+    return next(
+      new HttpError("Removing from wishlist failed, please try again.", 500),
+    );
   }
   res.status(200).json({ message: "Removed from wishlist." });
+};
+
+const reorderCountries = async (req, res, next) => {
+  const userId = req.params.uid;
+  if (req.userData.userId !== userId)
+    return next(new HttpError("Not authorized.", 401));
+  const { codes } = req.body;
+  let user;
+  try { user = await User.findById(userId); }
+  catch (err) { return next(new HttpError("Could not find user.", 500)); }
+  codes.forEach((code, index) => {
+    const country = user.countries.find(c => c.code === code);
+    if (country) country.order = index;
+  });
+  try { await user.save(); }
+  catch (err) { return next(new HttpError("Reordering failed.", 500)); }
+  res.json({ message: "Order updated." });
+};
+
+const reorderWishlist = async (req, res, next) => {
+  const userId = req.params.uid;
+  if (req.userData.userId !== userId)
+    return next(new HttpError("Not authorized.", 401));
+  const { codes } = req.body;
+  let user;
+  try { user = await User.findById(userId); }
+  catch (err) { return next(new HttpError("Could not find user.", 500)); }
+  codes.forEach((code, index) => {
+    const country = user.wishlist.find(c => c.code === code);
+    if (country) country.order = index;
+  });
+  try { await user.save(); }
+  catch (err) { return next(new HttpError("Reordering failed.", 500)); }
+  res.json({ message: "Order updated." });
 };
 
 exports.getUsers = getUsers;
@@ -598,6 +690,8 @@ exports.updateCountry = updateCountry;
 exports.getWishlist = getWishlist;
 exports.addToWishlist = addToWishlist;
 exports.removeFromWishlist = removeFromWishlist;
+exports.reorderCountries = reorderCountries;
+exports.reorderWishlist = reorderWishlist;
 
 const followUser = async (req, res, next) => {
   const { uid: targetId } = req.params;
@@ -616,8 +710,7 @@ const followUser = async (req, res, next) => {
     return next(new HttpError("Follow failed, please try again.", 500));
   }
 
-  if (!follower || !target)
-    return next(new HttpError("User not found.", 404));
+  if (!follower || !target) return next(new HttpError("User not found.", 404));
 
   if (follower.following.includes(targetId))
     return next(new HttpError("Already following this user.", 422));
@@ -648,8 +741,7 @@ const unfollowUser = async (req, res, next) => {
     return next(new HttpError("Unfollow failed, please try again.", 500));
   }
 
-  if (!follower || !target)
-    return next(new HttpError("User not found.", 404));
+  if (!follower || !target) return next(new HttpError("User not found.", 404));
 
   follower.following.pull(targetId);
   target.followers.pull(followerId);
@@ -737,7 +829,9 @@ const deleteCountryComment = async (req, res, next) => {
   try {
     user = await User.findById(userId);
   } catch (err) {
-    return next(new HttpError("Deleting comment failed, please try again.", 500));
+    return next(
+      new HttpError("Deleting comment failed, please try again.", 500),
+    );
   }
 
   if (!user) return next(new HttpError("User not found.", 404));
@@ -759,7 +853,9 @@ const deleteCountryComment = async (req, res, next) => {
   try {
     await user.save();
   } catch (err) {
-    return next(new HttpError("Deleting comment failed, please try again.", 500));
+    return next(
+      new HttpError("Deleting comment failed, please try again.", 500),
+    );
   }
 
   res.status(200).json({ message: "Comment deleted." });
