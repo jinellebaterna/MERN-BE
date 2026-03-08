@@ -25,6 +25,13 @@ const wishlistSchema = new Schema({
   code: { type: String, required: true },
   addedAt: { type: Date, default: Date.now },
   order: { type: Number, default: null },
+  notes: { type: String, default: "" },
+  priority: {
+    type: String,
+    enum: ["low", "medium", "high"],
+    default: "medium",
+  },
+  targetYear: { type: Number, default: null },
 });
 
 const userSchema = new Schema({

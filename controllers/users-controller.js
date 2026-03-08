@@ -359,11 +359,13 @@ const getCountries = async (req, res, next) => {
     return next(new HttpError("Could not find user for the provided id.", 404));
   }
 
-  const anyOrdered = user.countries.some(c => c.order !== null && c.order !== undefined);
+  const anyOrdered = user.countries.some(
+    (c) => c.order !== null && c.order !== undefined,
+  );
   const sorted = [...user.countries].sort((a, b) =>
     anyOrdered
       ? (a.order ?? 999999) - (b.order ?? 999999)
-      : new Date(b.addedAt) - new Date(a.addedAt)
+      : new Date(b.addedAt) - new Date(a.addedAt),
   );
 
   res.json({ countries: sorted.map((c) => c.toObject({ getters: true })) });
@@ -574,11 +576,13 @@ const getWishlist = async (req, res, next) => {
     );
   }
   if (!user) return next(new HttpError("User not found.", 404));
-  const anyOrdered = user.wishlist.some(c => c.order !== null && c.order !== undefined);
+  const anyOrdered = user.wishlist.some(
+    (c) => c.order !== null && c.order !== undefined,
+  );
   const sorted = [...user.wishlist].sort((a, b) =>
     anyOrdered
       ? (a.order ?? 999999) - (b.order ?? 999999)
-      : new Date(b.addedAt) - new Date(a.addedAt)
+      : new Date(b.addedAt) - new Date(a.addedAt),
   );
   res.json({ wishlist: sorted.map((c) => c.toObject({ getters: true })) });
 };
@@ -646,14 +650,20 @@ const reorderCountries = async (req, res, next) => {
     return next(new HttpError("Not authorized.", 401));
   const { codes } = req.body;
   let user;
-  try { user = await User.findById(userId); }
-  catch (err) { return next(new HttpError("Could not find user.", 500)); }
+  try {
+    user = await User.findById(userId);
+  } catch (err) {
+    return next(new HttpError("Could not find user.", 500));
+  }
   codes.forEach((code, index) => {
-    const country = user.countries.find(c => c.code === code);
+    const country = user.countries.find((c) => c.code === code);
     if (country) country.order = index;
   });
-  try { await user.save(); }
-  catch (err) { return next(new HttpError("Reordering failed.", 500)); }
+  try {
+    await user.save();
+  } catch (err) {
+    return next(new HttpError("Reordering failed.", 500));
+  }
   res.json({ message: "Order updated." });
 };
 
@@ -663,14 +673,20 @@ const reorderWishlist = async (req, res, next) => {
     return next(new HttpError("Not authorized.", 401));
   const { codes } = req.body;
   let user;
-  try { user = await User.findById(userId); }
-  catch (err) { return next(new HttpError("Could not find user.", 500)); }
+  try {
+    user = await User.findById(userId);
+  } catch (err) {
+    return next(new HttpError("Could not find user.", 500));
+  }
   codes.forEach((code, index) => {
-    const country = user.wishlist.find(c => c.code === code);
+    const country = user.wishlist.find((c) => c.code === code);
     if (country) country.order = index;
   });
-  try { await user.save(); }
-  catch (err) { return next(new HttpError("Reordering failed.", 500)); }
+  try {
+    await user.save();
+  } catch (err) {
+    return next(new HttpError("Reordering failed.", 500));
+  }
   res.json({ message: "Order updated." });
 };
 
@@ -692,6 +708,34 @@ exports.addToWishlist = addToWishlist;
 exports.removeFromWishlist = removeFromWishlist;
 exports.reorderCountries = reorderCountries;
 exports.reorderWishlist = reorderWishlist;
+
+const updateWishlistDetails = async (req, res, next) => {
+  const { uid: userId, code } = req.params;
+  if (req.userData.userId !== userId)
+    return next(new HttpError("Not authorized.", 401));
+  const { notes, priority, targetYear } = req.body;
+  let user;
+  try {
+    user = await User.findById(userId);
+  } catch (err) {
+    return next(new HttpError("Could not find user.", 500));
+  }
+  if (!user) return next(new HttpError("User not found.", 404));
+  const country = user.wishlist.find((c) => c.code === code);
+  if (!country)
+    return next(new HttpError("Country not found in wishlist.", 404));
+  if (notes !== undefined) country.notes = notes;
+  if (priority !== undefined) country.priority = priority;
+  if (targetYear !== undefined) country.targetYear = targetYear;
+  try {
+    await user.save();
+  } catch (err) {
+    return next(new HttpError("Saving details failed.", 500));
+  }
+  res.json({ country: country.toObject({ getters: true }) });
+};
+
+exports.updateWishlistDetails = updateWishlistDetails;
 
 const followUser = async (req, res, next) => {
   const { uid: targetId } = req.params;
