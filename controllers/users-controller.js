@@ -531,7 +531,7 @@ const updateCountry = async (req, res, next) => {
     );
   }
 
-  const { story, cities } = req.body;
+  const { story, cities, ratings } = req.body;
 
   let user;
   try {
@@ -553,6 +553,15 @@ const updateCountry = async (req, res, next) => {
 
   if (story !== undefined) country.story = story;
   if (cities !== undefined) country.cities = cities;
+  if (ratings !== undefined) {
+    country.ratings = {
+      food: ratings.food ?? country.ratings?.food ?? 0,
+      nature: ratings.nature ?? country.ratings?.nature ?? 0,
+      cost: ratings.cost ?? country.ratings?.cost ?? 0,
+      transport: ratings.transport ?? country.ratings?.transport ?? 0,
+      shopping: country.ratings?.shopping ?? 0,
+    };
+  }
 
   try {
     await user.save();

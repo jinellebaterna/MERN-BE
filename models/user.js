@@ -18,6 +18,13 @@ const countrySchema = new Schema({
   comments: [commentSchema],
   addedAt: { type: Date, default: Date.now },
   order: { type: Number, default: null },
+  ratings: {
+    food: { type: Number, min: 0, max: 5, default: 0 },
+    nature: { type: Number, min: 0, max: 5, default: 0 },
+    cost: { type: Number, min: 0, max: 5, default: 0 },
+    transport: { type: Number, min: 0, max: 5, default: 0 },
+    shopping: { type: Number, min: 0, max: 5, default: 0 },
+  },
 });
 
 const wishlistSchema = new Schema({
