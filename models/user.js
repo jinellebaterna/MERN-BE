@@ -42,16 +42,19 @@ const wishlistSchema = new Schema({
   targetYear: { type: Number, default: null },
 });
 
-const userSchema = new Schema({
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true, minLength: 6 },
-  image: { type: String, default: null },
-  places: [{ type: mongoose.Types.ObjectId, required: true, ref: "Place" }],
-  countries: [countrySchema],
-  wishlist: [wishlistSchema],
-  followers: [{ type: mongoose.Types.ObjectId, ref: "User" }],
-  following: [{ type: mongoose.Types.ObjectId, ref: "User" }],
-});
+const userSchema = new Schema(
+  {
+    name: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true, minLength: 6 },
+    image: { type: String, default: null },
+    places: [{ type: mongoose.Types.ObjectId, required: true, ref: "Place" }],
+    countries: [countrySchema],
+    wishlist: [wishlistSchema],
+    followers: [{ type: mongoose.Types.ObjectId, ref: "User" }],
+    following: [{ type: mongoose.Types.ObjectId, ref: "User" }],
+  },
+  { timestamps: true },
+);
 
 module.exports = mongoose.model("User", userSchema);
