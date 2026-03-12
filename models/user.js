@@ -25,6 +25,7 @@ const countrySchema = new Schema({
     transport: { type: Number, min: 0, max: 5, default: 0 },
     shopping: { type: Number, min: 0, max: 5, default: 0 },
   },
+  visitedAt: { type: Date, default: null },
 });
 
 const wishlistSchema = new Schema({
