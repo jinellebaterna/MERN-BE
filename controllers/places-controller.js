@@ -61,6 +61,20 @@ const createPlace = async (req, res, next) => {
 
   const { title, description, address, creator, tags } = req.body;
 
+  // Geocode address (non-fatal if it fails)
+  let lat, lon;
+  try {
+    const geoRes = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`,
+      { headers: { "User-Agent": "Wayfarer/1.0" } }
+    );
+    const geoData = await geoRes.json();
+    if (geoData.length) {
+      lat = parseFloat(geoData[0].lat);
+      lon = parseFloat(geoData[0].lon);
+    }
+  } catch (_) {}
+
   const createdPlace = new Place({
     title,
     description,
@@ -68,6 +82,8 @@ const createPlace = async (req, res, next) => {
     address,
     creator,
     tags: tags ? (Array.isArray(tags) ? tags : [tags]) : [],
+    lat,
+    lon,
   });
 
   let user;
@@ -107,7 +123,7 @@ const updatePlace = async (req, res, next) => {
     return next(new HttpError("Invalid inputs", 422));
   }
 
-  const { title, description, tags } = req.body;
+  const { title, description, tags, address } = req.body;
   const placeId = req.params.pid;
 
   let place;
@@ -128,6 +144,20 @@ const updatePlace = async (req, res, next) => {
 
   place.title = title;
   place.description = description;
+  if (address !== undefined && address !== place.address) {
+    place.address = address;
+    try {
+      const geoRes = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`,
+        { headers: { "User-Agent": "Wayfarer/1.0" } }
+      );
+      const geoData = await geoRes.json();
+      if (geoData.length) {
+        place.lat = parseFloat(geoData[0].lat);
+        place.lon = parseFloat(geoData[0].lon);
+      }
+    } catch (_) {}
+  }
   if (tags !== undefined) {
     place.tags = Array.isArray(tags) ? tags : [tags];
   }
