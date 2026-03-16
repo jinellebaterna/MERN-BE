@@ -144,6 +144,7 @@ const login = async (req, res, next) => {
     token: token,
     name: existingUser.name,
     image: existingUser.image,
+    passportCountry: existingUser.passportCountry || null,
   });
 };
 
@@ -189,6 +190,9 @@ const updateUser = async (req, res, next) => {
   user.name = req.body.name;
   if (req.body.image) {
     user.image = req.body.image;
+  }
+  if (req.body.passportCountry !== undefined) {
+    user.passportCountry = req.body.passportCountry || null;
   }
 
   try {

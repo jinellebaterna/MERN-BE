@@ -53,6 +53,7 @@ const userSchema = new Schema(
     wishlist: [wishlistSchema],
     followers: [{ type: mongoose.Types.ObjectId, ref: "User" }],
     following: [{ type: mongoose.Types.ObjectId, ref: "User" }],
+    passportCountry: { type: String, default: null },
   },
   { timestamps: true },
 );
