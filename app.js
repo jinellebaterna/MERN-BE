@@ -56,7 +56,11 @@ app.use((error, req, res, next) => {
   });
 });
 
-mongoose
-  .connect("mongodb://localhost:27017/mern-project")
-  .then(() => app.listen(5001))
-  .catch((err) => console.error("Connection error:", err));
+if (require.main === module) {
+  mongoose
+    .connect("mongodb://localhost:27017/mern-project")
+    .then(() => app.listen(5001))
+    .catch((err) => console.error("Connection error:", err));
+}
+
+module.exports = app;
